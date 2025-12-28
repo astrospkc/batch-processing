@@ -1,0 +1,18 @@
+## Use case of asynq (alternative of bullmq)
+- Guaranteed at least one execution of a task
+- Scheduling of tasks
+- Retries of failed tasks
+- Automatic recovery of tasks in the event of a worker crash
+- Weighted priority queues
+- Strict priority queues
+- Low latency to add a task since writes are fast in Redis
+- De-duplication of tasks using unique option
+- Allow timeout and deadline per task
+- Allow aggregating group of tasks to batch multiple successive    operations
+- Flexible handler interface with support for middlewares
+- Ability to pause queue to stop processing tasks from the queue
+- Periodic Tasks
+- Support Redis Sentinels for high availability
+- Integration with Prometheus to collect and visualize queue metrics
+- Web UI to inspect and remote-control queues and tasks
+- CLI to inspect and remote-control queues and tasks
