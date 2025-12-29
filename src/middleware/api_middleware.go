@@ -15,8 +15,9 @@ func ValidateAPIKey() fiber.Handler {
 
 	apikey := c.Get("X-API-Key")
 
+
 	filter := bson.M{
-		"key":apikey,
+		"api_key":apikey,
 	}
 	var u models.User
 	err := connect.UsersCollection.FindOne(context.TODO(), filter).Decode(&u)
