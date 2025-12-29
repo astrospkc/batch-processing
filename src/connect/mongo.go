@@ -25,7 +25,8 @@ var PostLikesCollection *mongo.Collection
 // var MongoClient
 func MongoConnect(){
 	envs:=env.NewEnv()
-	uri:=envs.MONGODB_URI
+	uri:=envs.MONGO_URI
+	
 	if uri==" "{
 		log.Fatal("get the uri first , uri must be invalid or empty string")
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 type ENV struct{
-	MONGODB_URI           string `mapstructure:"MONGODB_URI"`
+	MONGO_URI           string `mapstructure:"MONGO_URI"`
 }
 
 func NewEnv() *ENV{

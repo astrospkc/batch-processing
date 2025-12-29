@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"batch-processing/src/connect"
+	"batch-processing/src/routes"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -9,10 +10,11 @@ import (
 
 func main(){
 	app := fiber.New()
-
+    connect.MongoConnect()
     app.Get("/", func (c *fiber.Ctx) error {
         return c.SendString("Hello, World!")
     })
 
-    log.Fatal(app.Listen(":3000"))
+    routes.NormalRoutes(app)
+    app.Listen(":3000")
 }
