@@ -1,30 +1,40 @@
 package connect
 
 import (
+	"batch-processing/env"
 	"context"
 	"fmt"
-	"log"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/valkey-io/valkey-go"
 )
 
 var (
 	RCtx = context.Background()
-	RedisClient *redis.Client
+	RedisClient valkey.Client
    	
 )
 func InitRedisConnect(){
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-        Password: "", // no password set
-        DB:       0,  // use default DB
-	},
-	)
-
-	if err := rdb.Ping(RCtx).Err(); err!=nil{
-		log.Fatalf("Redis not connected %v", err)
+	envs:=env.NewEnv()
+	redisURI:=envs.REDIS_SERVICE_URI
+	
+	if redisURI == "" {
+		panic("AIVEN_SERVICE_URI not set")
 	}
 
-	RedisClient = rdb
-	fmt.Print("redis connected ")
+	// Parse the URI directly (handles TLS, password, username, host, port)
+	client, err := valkey.NewClient(valkey.MustParseURL(redisURI))
+	if err != nil {
+		panic("Failed to initialize Redis client: " + err.Error())
+	}
+
+	RedisClient = client
+
+	// Ping test to confirm successful connection
+	err = RedisClient.Do(RCtx, RedisClient.B().Ping().Build()).Error()
+	if err != nil {
+		panic(fmt.Sprintf("Redis connection ping failed: %v", err))
+	}
+
+	fmt.Println("✅ Connected to Redis")
+
 }

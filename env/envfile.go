@@ -8,6 +8,7 @@ import (
 
 type ENV struct{
 	MONGO_URI           string `mapstructure:"MONGO_URI"`
+	REDIS_SERVICE_URI   string `mapstructure:"REDIS_SERVICE_URI"`
 }
 
 func NewEnv() *ENV{
