@@ -41,7 +41,6 @@ func CreateUser()fiber.Handler{
 				},
 			)
 		}
-		// 
 		// check if existing user
 		var existingUser models.User
 		err := connect.UsersCollection.FindOne(context.TODO(), bson.M{"email":body.Email}).Decode(&existingUser)

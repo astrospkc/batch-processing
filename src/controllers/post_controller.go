@@ -36,6 +36,8 @@ func CreatePost()fiber.Handler{
 			LikeCount: 0,
 			CreatedAt: time.Now().UTC(),
 		}
+
+		
 		
 		_,err = connect.PostsCollection.InsertOne(context.TODO(),newPost)
 		if err!=nil{

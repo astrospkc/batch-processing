@@ -20,4 +20,13 @@
 - Integration with Prometheus to collect and visualize queue metrics
 - Web UI to inspect and remote-control queues and tasks
 - CLI to inspect and remote-control queues and tasks
+  
+## worker 
+will enqueue the job.
 
+## Redis 
+for storing the data
+
+## installation :
+
+redis : "go get github.com/redis/go-redis/v9"
