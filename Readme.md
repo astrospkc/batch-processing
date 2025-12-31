@@ -30,3 +30,13 @@ for storing the data
 ## installation :
 
 redis : "go get github.com/redis/go-redis/v9"
+
+
+<!-- leanings -->
+## Learnings:
+Mux = Multiplexer
+
+A multiplexer routes one input to one of many handlers
+
+The work of NewMux() :
+-- “When a task of type email:send arrives, call HandlePostLike
