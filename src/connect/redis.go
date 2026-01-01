@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/valkey-io/valkey-go"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
 	RCtx = context.Background()
-	RedisClient valkey.Client
+	RedisClient redis.Client
    	
 )
 func InitRedisConnect(){
@@ -22,15 +22,15 @@ func InitRedisConnect(){
 	}
 
 	// Parse the URI directly (handles TLS, password, username, host, port)
-	client, err := valkey.NewClient(valkey.MustParseURL(redisURI))
+	client, err := redis.ParseURL(redisURI)
 	if err != nil {
 		panic("Failed to initialize Redis client: " + err.Error())
 	}
 
-	RedisClient = client
+	RedisClient = *redis.NewClient(client)
 
 	// Ping test to confirm successful connection
-	err = RedisClient.Do(RCtx, RedisClient.B().Ping().Build()).Error()
+	err = RedisClient.Ping(RCtx).Err()
 	if err != nil {
 		panic(fmt.Sprintf("Redis connection ping failed: %v", err))
 	}

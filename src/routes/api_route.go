@@ -16,5 +16,7 @@ func NormalRoutes(app *fiber.App){
 	post.Post("/", controllers.CreatePost())
 	
 	postLike := app.Group("/like", middleware.ValidateAPIKey())
+	postLike.Post("/misc/:post_id", controllers.MiscLikePost())
 	postLike.Post("/:post_id", controllers.LikePost())
+	
 }

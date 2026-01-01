@@ -37,7 +37,7 @@ func HandlePostLike(ctx context.Context, t *asynq.Task) error{
 	if err:= json.Unmarshal(t.Payload(),&payload); err!=nil{
 		return err
 	}
-	log.Println("her comes the payload: ", payload.LikeCount, payload.PostId)
+	log.Println("here comes the payload: ", payload.LikeCount, payload.PostId)
 
 	return nil
 }

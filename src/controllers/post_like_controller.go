@@ -4,6 +4,8 @@ import (
 	"batch-processing/src/connect"
 	"batch-processing/src/models"
 	"context"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -72,3 +74,74 @@ func LikePost()fiber.Handler{
 
 	}
 }
+
+
+func MiscLikePost()fiber.Handler{
+	return func(c *fiber.Ctx) error{
+		fmt.Println("why")
+		postId:= c.Params("post_id")
+		_, err:= FetchUserId(c)
+		if err!=nil{
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":"Failed to fetch user_id",
+			})
+		}
+		var postLike models.Post
+		filter:=bson.M{
+			"id":postId,
+		}
+		if err = connect.PostsCollection.FindOne(context.TODO(),filter ).Decode(&postLike); err!=nil{
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":"Failed to fetch post",
+			})
+		}
+		// add task in redis and later update it to db after some time
+		// 1st check if any data related with like is present or not.
+		// setnX -> set if not exists
+		key := fmt.Sprintf("PostId_%s", postId)
+		ok, err := connect.RedisClient.SetNX(connect.RCtx, key,postLike.LikeCount, time.Duration(12*time.Now().Hour())*60*time.Second).Result()
+		if err!=nil{
+			return err
+		}				
+		if !ok {
+			// key already exists
+			// update the value of the key
+			var val string
+			val, err = connect.RedisClient.Get(context.TODO(), key).Result()
+			if err!=nil{
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error":"Failed while getting the value of like from redis",
+				})
+			}
+			value,err:= strconv.Atoi(val)
+			if err!=nil{
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error":"Failed while type conversion",
+				})
+			}
+			result, err := connect.RedisClient.Set(context.TODO(), key, value+1, time.Duration(12*time.Now().Hour()*60) ).Result()
+			if err!=nil{
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error":"Failed to set value",
+				})
+			}
+
+			// assign the task 
+
+			return c.JSON(fiber.Map{
+				"message":"successfully done",
+				"data":result,
+				"like count":value+1,
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"message":"successfully done",
+			"data":"",
+			"like count":postLike.LikeCount,
+		})
+		
+		
+	}
+}
+
