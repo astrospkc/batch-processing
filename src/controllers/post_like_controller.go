@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"batch-processing/src/async"
 	"batch-processing/src/connect"
 	"batch-processing/src/models"
 	"context"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -19,6 +21,15 @@ type LikePostResponse struct {
 	Code    int  `bson:"code" json:"code"`
 	Data    models.Post `bson:"data" json:"data"`
 }
+
+
+
+type PostLikePayload struct{
+	PostId string
+	LikeCount int
+}
+
+var AsynqClient *asynq.Client
 
 func LikePost()fiber.Handler{
 	return func(c *fiber.Ctx) error{
@@ -78,6 +89,8 @@ func LikePost()fiber.Handler{
 
 func MiscLikePost()fiber.Handler{
 	return func(c *fiber.Ctx) error{
+		AsynqClient := async.NewAsynqClient()
+
 		fmt.Println("why")
 		postId:= c.Params("post_id")
 		_, err:= FetchUserId(c)
@@ -119,13 +132,26 @@ func MiscLikePost()fiber.Handler{
 					"error":"Failed while type conversion",
 				})
 			}
-			result, err := connect.RedisClient.Set(context.TODO(), key, value+1, time.Duration(12*time.Now().Hour()*60) ).Result()
+
+			ttl:= 12*time.Minute
+			result, err := connect.RedisClient.Set(context.TODO(), key, value+1, time.Duration(ttl) ).Result()
 			if err!=nil{
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"error":"Failed to set value",
 				})
 			}
 
+			task := asynq.NewTask(
+				"post:like",
+				[]byte(fmt.Sprintf(`{"post_id":"%s"}`, postId)),
+
+			)
+
+			_, _ = AsynqClient.Enqueue(
+				task,
+				asynq.ProcessIn(10*time.Second), // batch window
+				asynq.Unique(10*time.Second), 
+			)
 			// assign the task 
 
 			return c.JSON(fiber.Map{

@@ -2,17 +2,39 @@ package async
 
 import (
 	// "batch-processing/env"
+	"batch-processing/env"
+	"batch-processing/src/connect"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+type PostLikePayload struct{
+	PostId string
+}
+
+const (
+	TypePostLike = "post:like"
+)
 func NewServer() *asynq.Server{
-	// envs:= env.NewEnv()
+	envs:= env.NewEnv()
+	redis_uri := envs.REDIS_SERVICE_URI
+	opt, err:= redis.ParseURL(redis_uri)
+	if err!=nil{
+		log.Fatal(err)
+	}
+
 	return asynq.NewServer(asynq.RedisClientOpt{
-		Addr:"127.0.0.1:6379",
+		Addr:      opt.Addr,
+		Username:  opt.Username,
+		Password:  opt.Password,
+		DB:        opt.DB,
+		TLSConfig: opt.TLSConfig,
 	}, 
 	asynq.Config{
 		Concurrency: 10,
@@ -37,7 +59,29 @@ func HandlePostLike(ctx context.Context, t *asynq.Task) error{
 	if err:= json.Unmarshal(t.Payload(),&payload); err!=nil{
 		return err
 	}
-	log.Println("here comes the payload: ", payload.LikeCount, payload.PostId)
+	filter:= bson.M{
+		"id":payload.PostId,
+	}
+	key := fmt.Sprintf("PostId_%s", payload.PostId)
+	data, err :=connect.RedisClient.Get(connect.RCtx, key).Int()
+	if err == redis.Nil || data == 0 {
+		return nil // nothing to flush
+	}
+	if err != nil {
+		return err
+	}
+	update:=bson.M{
+		"$inc":bson.M{
+			"like_count":data,
+		},
+	}
+	_, err=connect.PostsCollection.UpdateByID(context.TODO(),filter, update )
+	if err!=nil{
+		return err
+	}
+	connect.RedisClient.Del(connect.RCtx, key)
+
+	log.Println("here comes the payload: ",  payload.PostId)
 
 	return nil
 }
