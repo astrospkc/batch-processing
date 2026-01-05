@@ -28,14 +28,14 @@ func NewServer() *asynq.Server{
 	if err!=nil{
 		log.Fatal(err)
 	}
-
-	return asynq.NewServer(asynq.RedisClientOpt{
+	client := asynq.RedisClientOpt{
 		Addr:      opt.Addr,
 		Username:  opt.Username,
 		Password:  opt.Password,
 		DB:        opt.DB,
 		TLSConfig: opt.TLSConfig,
-	}, 
+	}
+	return asynq.NewServer(client, 
 	asynq.Config{
 		Concurrency: 10,
 		Queues: map[string]int{

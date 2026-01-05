@@ -40,3 +40,7 @@ A multiplexer routes one input to one of many handlers
 
 The work of NewMux() :
 -- “When a task of type email:send arrives, call HandlePostLike
+
+<!-- project structure -->
+## Feature building
+- portfolio generation
