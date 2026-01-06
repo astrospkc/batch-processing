@@ -6,7 +6,7 @@ import (
 	"batch-processing/src/models"
 	"context"
 	"fmt"
-	"strconv"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -87,87 +87,74 @@ func LikePost()fiber.Handler{
 }
 
 
-func MiscLikePost()fiber.Handler{
-	return func(c *fiber.Ctx) error{
+func MiscLikePost() fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		AsynqClient := async.NewAsynqClient()
+		// fmt.Println("AsynqClient",AsynqClient)
 
-		fmt.Println("why")
-		postId:= c.Params("post_id")
-		_, err:= FetchUserId(c)
-		if err!=nil{
+		// fmt.Println("why")
+		postId := c.Params("post_id")
+		_, err := FetchUserId(c)
+		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error":"Failed to fetch user_id",
+				"error": "Failed to fetch user_id",
 			})
 		}
 		var postLike models.Post
-		filter:=bson.M{
-			"id":postId,
+		filter := bson.M{
+			"id": postId,
 		}
-		if err = connect.PostsCollection.FindOne(context.TODO(),filter ).Decode(&postLike); err!=nil{
+		if err = connect.PostsCollection.FindOne(context.TODO(), filter).Decode(&postLike); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error":"Failed to fetch post",
+				"error": "Failed to fetch post",
 			})
 		}
-		// add task in redis and later update it to db after some time
-		// 1st check if any data related with like is present or not.
-		// setnX -> set if not exists
+
+		// Redis Key
 		key := fmt.Sprintf("PostId_%s", postId)
-		ok, err := connect.RedisClient.SetNX(connect.RCtx, key,postLike.LikeCount, time.Duration(12*time.Now().Hour())*60*time.Second).Result()
-		if err!=nil{
-			return err
-		}				
-		if !ok {
-			// key already exists
-			// update the value of the key
-			var val string
-			val, err = connect.RedisClient.Get(context.TODO(), key).Result()
-			if err!=nil{
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error":"Failed while getting the value of like from redis",
-				})
-			}
-			value,err:= strconv.Atoi(val)
-			if err!=nil{
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error":"Failed while type conversion",
-				})
-			}
+		// Fixed TTL of 12 hours
+		ttl := 12 * time.Hour
 
-			ttl:= 12*time.Minute
-			result, err := connect.RedisClient.Set(context.TODO(), key, value+1, time.Duration(ttl) ).Result()
-			if err!=nil{
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error":"Failed to set value",
-				})
-			}
-
-			task := asynq.NewTask(
-				"post:like",
-				[]byte(fmt.Sprintf(`{"post_id":"%s"}`, postId)),
-
-			)
-
-			_, _ = AsynqClient.Enqueue(
-				task,
-				asynq.ProcessIn(10*time.Second), // batch window
-				asynq.Unique(10*time.Second), 
-			)
-			// assign the task 
-
-			return c.JSON(fiber.Map{
-				"message":"successfully done",
-				"data":result,
-				"like count":value+1,
+		// 1. Initialize key if not exists (SetNX) using current DB count
+		// If key exists, this does nothing and returns false (which we ignore here)
+		_, err = connect.RedisClient.SetNX(connect.RCtx, key, postLike.LikeCount, ttl).Result()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to access redis",
 			})
+		}
+
+		// 2. Atomically Increment the count
+		newCount, err := connect.RedisClient.Incr(connect.RCtx, key).Result()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to increment like count",
+			})
+		}
+
+		// 3. Enqueue background task to sync to DB
+		// Determine wait time or batching strategy. User had 10s unique lock.
+		task := asynq.NewTask(
+			"post:like",
+			[]byte(fmt.Sprintf(`{"post_id":"%s"}`, postId)),
+		)
+
+		// Enqueue with uniqueness to avoid swamping the worker if likes come in fast bursts
+		_, err = AsynqClient.Enqueue(
+			task,
+			asynq.ProcessIn(10*time.Second), // Debounce/Batch window
+			asynq.Unique(10*time.Second),    // Dedup task for this post for 10s
+		)
+		if err != nil {
+			// Log error but don't fail the request since Redis is updated
+			log.Printf("Failed to enqueue task: %v", err)
 		}
 
 		return c.JSON(fiber.Map{
-			"message":"successfully done",
-			"data":"",
-			"like count":postLike.LikeCount,
+			"message":    "successfully done",
+			"data":       "queued",
+			"like count": newCount,
 		})
-		
-		
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	// "batch-processing/env"
 	"batch-processing/env"
 	"log"
+	"fmt"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -17,6 +18,7 @@ func NewAsynqClient()*asynq.Client{
 	if err!=nil{
 		log.Fatal(err)
 	}
+	fmt.Println(opt)
 
 	return asynq.NewClient(
 	asynq.RedisClientOpt{
