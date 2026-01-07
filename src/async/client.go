@@ -25,7 +25,7 @@ func NewAsynqClient()*asynq.Client{
 		Addr:      opt.Addr,
 		Username:  opt.Username,
 		Password:  opt.Password,
-		DB:        opt.DB,
+		DB:        1,
 		TLSConfig: opt.TLSConfig,
 	},
 	)

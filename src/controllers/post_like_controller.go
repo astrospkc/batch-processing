@@ -91,6 +91,7 @@ func MiscLikePost() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		AsynqClient := async.NewAsynqClient()
 		// fmt.Println("AsynqClient",AsynqClient)
+		AsynqClient.Enqueue(asynq.NewTask("debug:test", nil))
 
 		// fmt.Println("why")
 		postId := c.Params("post_id")
@@ -158,3 +159,14 @@ func MiscLikePost() fiber.Handler {
 	}
 }
 
+
+
+
+// docker run --rm \
+//   --name asynqmon \
+//   -p 8080:8080 \
+//   -e REDIS_ADDR=scheduler-punampandit-5c65.b.aivencloud.com:20072 \
+//   -e REDIS_USERNAME=default \
+//   -e REDIS_PASSWORD=AVNrFn_QxT \
+//   hibiken/asynqmon
+// Asynq Monitoring WebUI server is listening on port 8080
